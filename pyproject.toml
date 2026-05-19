@@ -58,13 +58,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/cameronrye/openzim-mcp"
-Repository = "https://github.com/cameronrye/openzim-mcp.git"
-Issues = "https://github.com/cameronrye/openzim-mcp/issues"
-Changelog = "https://github.com/cameronrye/openzim-mcp/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/cameronrye/openzim-mcp#readme"
-"Security Policy" = "https://github.com/cameronrye/openzim-mcp/blob/main/SECURITY.md"
-"Contributing" = "https://github.com/cameronrye/openzim-mcp/blob/main/CONTRIBUTING.md"
+Homepage = "https://git.carpocratian.org/sibyl/mcp-openzim"
+Repository = "https://git.carpocratian.org/sibyl/mcp-openzim.git"
+Issues = "https://git.carpocratian.org/sibyl/mcp-openzim/issues"
+Changelog = "https://git.carpocratian.org/sibyl/mcp-openzim/src/branch/main/CHANGELOG.md"
+Documentation = "https://git.carpocratian.org/sibyl/mcp-openzim/src/branch/main/README.md"
+"Security Policy" = "https://git.carpocratian.org/sibyl/mcp-openzim/src/branch/main/SECURITY.md"
+"Contributing" = "https://git.carpocratian.org/sibyl/mcp-openzim/src/branch/main/CONTRIBUTING.md"
 
 [project.scripts]
 openzim-mcp = "openzim_mcp.__main__:main"
