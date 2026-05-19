@@ -23,7 +23,7 @@ class TestPromptRendering:
     """Test prompt body rendering — verify each returns non-empty content."""
 
     def test_research_prompt_body(self):
-        """research(topic) renders a multi-message conversation referencing topic."""
+        """research(topic) renders a zim_query-only workflow."""
         from openzim_mcp.tools.prompts import _research_body
 
         messages = _research_body("climate change")
@@ -33,6 +33,62 @@ class TestPromptRendering:
             for m in messages
         )
         assert "climate change" in body_text
+        assert "zim_query" in body_text
+        assert "search_all" not in body_text
+        assert "get_entry_summary" not in body_text
+
+    def test_article_prompt_body(self):
+        """article(topic) renders a canonical article briefing workflow."""
+        from openzim_mcp.tools.prompts import _article_body
+
+        messages = _article_body("Photosynthesis")
+        body_text = "\n".join(
+            m["content"]["text"] if isinstance(m["content"], dict) else m["content"]
+            for m in messages
+        )
+        assert "Photosynthesis" in body_text
+        assert "find article titled Photosynthesis" in body_text
+        assert "zim_query" in body_text
+        assert "zim_file_path" in body_text
+
+    def test_compare_prompt_body(self):
+        """compare(a, b) renders a two-topic Wikipedia workflow."""
+        from openzim_mcp.tools.prompts import _compare_body
+
+        messages = _compare_body("Athens", "Sparta")
+        body_text = "\n".join(
+            m["content"]["text"] if isinstance(m["content"], dict) else m["content"]
+            for m in messages
+        )
+        assert "Athens" in body_text
+        assert "Sparta" in body_text
+        assert "synthesize=true" in body_text
+
+    def test_timeline_prompt_body(self):
+        """timeline(topic) renders section-first chronology guidance."""
+        from openzim_mcp.tools.prompts import _timeline_body
+
+        messages = _timeline_body("World War II")
+        body_text = "\n".join(
+            m["content"]["text"] if isinstance(m["content"], dict) else m["content"]
+            for m in messages
+        )
+        assert "World War II" in body_text
+        assert "show structure" in body_text
+        assert "get section History" in body_text
+
+    def test_map_prompt_body(self):
+        """map(topic) renders a concept-map workflow."""
+        from openzim_mcp.tools.prompts import _map_body
+
+        messages = _map_body("Evolution")
+        body_text = "\n".join(
+            m["content"]["text"] if isinstance(m["content"], dict) else m["content"]
+            for m in messages
+        )
+        assert "Evolution" in body_text
+        assert "articles related to Evolution" in body_text
+        assert "reading order" in body_text
 
     def test_summarize_prompt_body(self):
         """summarize(zim, entry) references the entry path."""
@@ -84,6 +140,26 @@ class TestPromptRendering:
         body = "\n".join(m["content"]["text"] for m in messages)
         assert "explore" in body.lower() or "path" in body.lower()
         assert "get_zim_metadata" not in body
+
+    @pytest.mark.parametrize(
+        ("factory_name", "args", "marker"),
+        [
+            ("_article_body", ("",), "article"),
+            ("_compare_body", ("Athens", ""), "compare"),
+            ("_timeline_body", ("",), "timeline"),
+            ("_map_body", ("",), "map"),
+        ],
+    )
+    def test_new_simple_prompts_empty_args_ask_for_input(
+        self, factory_name: str, args: tuple, marker: str
+    ):
+        """New simple-mode prompts guard missing args."""
+        import openzim_mcp.tools.prompts as prompts
+
+        messages = getattr(prompts, factory_name)(*args)
+        body = "\n".join(m["content"]["text"] for m in messages)
+        assert marker in body.lower()
+        assert "zim_query" not in body
 
 
 class TestPromptInputSanitization:

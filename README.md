@@ -185,8 +185,17 @@ Tools:
 Prompts:
 
 - `/research`
+- `/article`
+- `/compare`
+- `/timeline`
+- `/map`
 
 That is the interface you should expect clients to see.
+
+All prompts are workflow macros over `zim_query`; they do not reference the
+advanced-mode tools. They assume a single offline Wikipedia archive and tell
+clients to omit `zim_file_path` so the server can auto-select the loaded
+archive.
 
 ## Example Queries
 
@@ -221,6 +230,7 @@ The fork-specific behavior currently pinned by tests includes:
 - simple mode prompt registration
 - entry-like `zim_file_path` fallback in single-archive mode
 - reduced prompt surface
+- Wikipedia-oriented simple-mode prompts over `zim_query`
 
 ## License
 

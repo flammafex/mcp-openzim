@@ -1499,18 +1499,13 @@ class TestToolModeRegistration:
             "simple mode must expose only zim_query; " f"got {sorted(names)}"
         )
 
-    def test_simple_mode_still_registers_prompts(
-        self, test_config: OpenZimMcpConfig
-    ):
+    def test_simple_mode_still_registers_prompts(self, test_config: OpenZimMcpConfig):
         """Simple mode keeps the slash-command prompt surface."""
         simple_config = test_config.model_copy(update={"tool_mode": "simple"})
         server = OpenZimMcpServer(simple_config)
 
         prompt_names = _registered_prompt_names(server)
-        assert prompt_names == {"research"}, (
-            "simple mode should advertise only the research MCP prompt; "
-            f"got {sorted(prompt_names)}"
-        )
+        assert prompt_names == {"research", "article", "compare", "timeline", "map"}
 
     def test_advanced_mode_registers_full_tool_surface(
         self, test_config: OpenZimMcpConfig

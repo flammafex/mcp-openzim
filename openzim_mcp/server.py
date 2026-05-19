@@ -75,11 +75,13 @@ class OpenZimMcpServer:
             config, self.path_validator, self.cache, self.content_processor
         )
         self.async_zim_operations = AsyncZimOperations(self.zim_operations)
+        self.archive_profile: Dict[str, Any] = {}
 
         # Initialize simple tools handler if in simple mode
         self.simple_tools_handler = None
         if config.tool_mode == TOOL_MODE_SIMPLE:
             self.simple_tools_handler = SimpleToolsHandler(self.zim_operations)
+            self.archive_profile = self._build_archive_profile()
 
         # Initialize MCP server. FastMCP itself doesn't accept a version
         # kwarg, but the underlying lowlevel Server does — set it after
@@ -191,6 +193,96 @@ class OpenZimMcpServer:
             details=base_message,
         )
 
+    def _build_archive_profile(self) -> Dict[str, Any]:
+        """Best-effort profile for the single-Wikipedia simple-mode deployment.
+
+        The profile is intentionally advisory: prompt bodies use it to tell
+        clients what archive they are querying and when the snapshot dates
+        from, but failures here must never prevent the MCP server from
+        starting. All expensive reads go through ``ZimOperations`` so the
+        existing cache absorbs subsequent prompt/tool calls.
+        """
+        profile: Dict[str, Any] = {
+            "deployment": "single-wikipedia-zim",
+        }
+        try:
+            files = self.zim_operations.list_zim_files_data()
+        except Exception as e:
+            logger.warning("Could not build archive profile file list: %s", e)
+            profile["error"] = "file_list_unavailable"
+            return profile
+
+        profile["zim_file_count"] = len(files)
+        if len(files) != 1:
+            return profile
+
+        zim_file = files[0]
+        path = zim_file.get("path")
+        profile.update(
+            {
+                "name": zim_file.get("name"),
+                "path": path,
+                "size": zim_file.get("size"),
+                "modified": zim_file.get("modified"),
+            }
+        )
+        if not isinstance(path, str):
+            return profile
+
+        try:
+            metadata = self.zim_operations.get_zim_metadata_data(path)
+            metadata_entries = metadata.get("metadata_entries", {})
+            if isinstance(metadata_entries, dict):
+                profile["title"] = (
+                    metadata_entries.get("Title")
+                    or metadata_entries.get("Name")
+                    or zim_file.get("name")
+                )
+                profile["language"] = metadata_entries.get("Language")
+                profile["archive_date"] = metadata_entries.get("Date")
+                profile["description"] = metadata_entries.get("Description")
+                profile["creator"] = metadata_entries.get("Creator")
+            for key in (
+                "entry_count",
+                "all_entry_count",
+                "article_count",
+                "media_count",
+            ):
+                value = metadata.get(key)
+                if isinstance(value, int):
+                    profile[key] = value
+        except Exception as e:
+            logger.warning("Could not add metadata to archive profile: %s", e)
+            profile["metadata_error"] = type(e).__name__
+
+        try:
+            namespaces = self.zim_operations.list_namespaces_data(path)
+            ns_payload = namespaces.get("namespaces", {})
+            if isinstance(ns_payload, dict):
+                profile["namespaces"] = {
+                    key: {
+                        "total": value.get("total"),
+                        "is_authoritative": value.get("is_authoritative"),
+                    }
+                    for key, value in ns_payload.items()
+                    if isinstance(value, dict)
+                }
+        except Exception as e:
+            logger.warning("Could not add namespaces to archive profile: %s", e)
+            profile["namespaces_error"] = type(e).__name__
+
+        try:
+            main_page = self.zim_operations.get_main_page_data(path)
+            profile["main_page"] = {
+                "title": main_page.get("title"),
+                "path": main_page.get("path"),
+            }
+        except Exception as e:
+            logger.info("Main page unavailable for archive profile: %s", e)
+            profile["main_page_error"] = type(e).__name__
+
+        return profile
+
     def _register_simple_tools(self) -> None:
         """Register the single ``zim_query`` tool used in simple mode.
 
@@ -215,10 +307,12 @@ class OpenZimMcpServer:
             compact_budget: Optional[Any] = None,
             synthesize: bool = False,
         ) -> Union[str, SynthesizeResponse, ToolErrorPayload]:
-            """Query ZIM archives using natural language.
+            """Query the offline Wikipedia ZIM archive using natural language.
 
-            Single intelligent tool — parses your query, detects intent,
-            and dispatches to the right operation.
+            Simple-mode deployment: one intelligent tool, one loaded
+            Wikipedia archive. Parse the user's request into a concise
+            `query` string and call this tool; do not call advanced-mode
+            tools because they are not registered in simple mode.
 
             EXTRACT INTENT BEFORE CALLING. Do not pass the user's raw
             message as `query`. Translate it into one of the operations
@@ -253,15 +347,29 @@ class OpenZimMcpServer:
               find article titled <name>     - title lookup
               articles related to <name>     - related articles
 
+            WIKIPEDIA PRESET:
+              - Omit `zim_file_path` unless the user is debugging archive
+                selection. The server auto-selects the one loaded archive.
+              - Prefer canonical article lookup for entity names:
+                `find article titled <topic>` or `tell me about <topic>`.
+              - For long pages, call `show structure of <article>`, then
+                `get section <section> of <article>` instead of repeatedly
+                fetching the whole article.
+              - Treat list pages and disambiguation pages as navigation
+                unless the user explicitly asks for a list/disambiguation.
+              - Wikipedia snapshots can be stale; if an archive date appears
+                in metadata or prompt context, mention it for current-affairs
+                answers.
+
             Args:
                 query: REQUIRED. Translated from user intent — never the
                     user's raw message.
                 zim_file_path: Optional. The on-disk path of a .zim file
                     (e.g. `/data/wikipedia_en_all_maxi.zim`) — NOT an
-                    article title, topic, or made-up filename. Omit
-                    entirely and the tool auto-selects the one loaded
-                    archive (or opens all of them when `synthesize=True`).
-                    Use `list available ZIM files` to see real paths.
+                    article title, topic, or made-up filename. In this
+                    single-Wikipedia deployment, omit it almost always;
+                    the tool auto-selects the one loaded archive.
+                    Use `list available ZIM files` only when debugging.
                 limit: Max search/browse results (default: 3).
                 offset: Pagination offset (default: 0).
                 max_content_length: Article body cap (default: 4000).
