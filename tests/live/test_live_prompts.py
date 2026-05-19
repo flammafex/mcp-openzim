@@ -1,8 +1,6 @@
 """Live MCP-prompts test over stdio JSON-RPC.
 
-Covers v1.0 item 7: ``/research``, ``/summarize``, ``/explore`` MCP prompts
-including the v1.0 sanitization fixes (control-char stripping, length cap,
-empty-arg ask-for-input fallback).
+This fork intentionally exposes only the ``/research`` MCP prompt.
 """
 
 from __future__ import annotations
@@ -114,12 +112,12 @@ def _get_prompt(
     return resp["result"]["messages"][0]["content"]["text"]
 
 
-def test_prompts_list_advertises_three_prompts(stdio_session) -> None:
-    """``prompts/list`` returns the three named v1.0 prompts."""
+def test_prompts_list_advertises_research_only(stdio_session) -> None:
+    """``prompts/list`` returns the single prompt this fork exposes."""
     _send(stdio_session, {"jsonrpc": "2.0", "id": 1, "method": "prompts/list"})
     resp = _recv_until(stdio_session, 1)
     names = sorted(p["name"] for p in resp["result"]["prompts"])
-    assert names == ["explore", "research", "summarize"]
+    assert names == ["research"]
 
 
 def test_research_prompt_interpolates_topic(stdio_session) -> None:
@@ -129,28 +127,6 @@ def test_research_prompt_interpolates_topic(stdio_session) -> None:
     # Should mention search_all and get_entry_summary as part of the workflow.
     assert "search_all" in body
     assert "get_entry_summary" in body
-
-
-def test_summarize_prompt_interpolates_paths(stdio_session, zim_dir) -> None:
-    """``summarize`` prompt interpolates both file and entry path."""
-    zims = sorted(zim_dir.glob("*.zim"))
-    assert zims, "no ZIMs available for summarize test"
-    body = _get_prompt(
-        stdio_session,
-        3,
-        "summarize",
-        {"zim_file_path": str(zims[0]), "entry_path": "iep.utm.edu/plato/"},
-    )
-    assert "iep.utm.edu/plato/" in body
-    assert str(zims[0]) in body
-
-
-def test_explore_prompt_interpolates_zim_file(stdio_session, zim_dir) -> None:
-    """``explore`` prompt interpolates the ``zim_file_path`` argument."""
-    zims = sorted(zim_dir.glob("*.zim"))
-    body = _get_prompt(stdio_session, 4, "explore", {"zim_file_path": str(zims[0])})
-    assert str(zims[0]) in body
-    assert "get_zim_metadata" in body
 
 
 def test_research_strips_control_chars(stdio_session) -> None:

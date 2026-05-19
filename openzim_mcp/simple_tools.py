@@ -3185,9 +3185,15 @@ class SimpleToolsHandler:
              matches nothing: treat it as a hallucination and substitute
              the auto-selected archive when exactly one is loaded.
 
-          3. ``candidate`` has a path separator and matches nothing: trust
-             it (H14: explicit paths must reach the backend, which will
-             surface a clearer error than silent replacement).
+          3. ``candidate`` has a path separator, matches nothing, and does
+             not even look like a ZIM file path (e.g. ``A/Foo``): when
+             exactly one archive is loaded, treat it as a parameter-slot
+             hallucination and substitute the auto-selected archive.
+
+          4. ``candidate`` has a path separator, matches nothing, and still
+             looks like a deliberate ZIM path (e.g. ``/srv/zim/wiki.zim``):
+             trust it (H14: explicit paths must reach the backend, which
+             will surface a clearer error than silent replacement).
         """
         resolved = self._resolve_zim_path(candidate)
         if resolved is not None:
@@ -3207,7 +3213,33 @@ class SimpleToolsHandler:
                     f"'{candidate}'; auto-selected '{auto_selected}'."
                 )
                 return auto_selected
+        if self._looks_like_entry_path_not_zim(candidate):
+            auto_selected = self._auto_select_zim_file()
+            if auto_selected:
+                self._track("zim_path_entry_like_replaced_with_auto_select")
+                logger.info(
+                    "Discarded entry-like zim_file_path '%s'; auto-selected '%s'.",
+                    candidate,
+                    auto_selected,
+                )
+                return auto_selected
         return candidate
+
+    @staticmethod
+    def _looks_like_entry_path_not_zim(candidate: str) -> bool:
+        """Return True when ``candidate`` resembles an entry path, not a ZIM path.
+
+        In single-archive deployments, some MCP clients misroute the article
+        entry path into ``zim_file_path`` (e.g. ``A/Marcellina_(gnostic)``).
+        Those values contain path separators, so the legacy "bare filename"
+        hallucination fallback never fired. Distinguish them from deliberate
+        archive paths by requiring a slash and rejecting anything whose final
+        path component ends in ``.zim``.
+        """
+        cand = candidate.strip()
+        if not cand or ("/" not in cand and "\\" not in cand):
+            return False
+        return not Path(cand).name.lower().endswith(".zim")
 
     def _resolve_zim_path(self, candidate: str) -> Optional[str]:
         """Try to resolve ``candidate`` to a real ZIM file's full path.

@@ -1459,6 +1459,26 @@ def _registered_tool_names(server: OpenZimMcpServer) -> set[str]:
     return set(tools.keys())
 
 
+def _registered_prompt_names(server: OpenZimMcpServer) -> set[str]:
+    """Return the set of MCP prompts registered on ``server``."""
+    prompt_manager = getattr(server.mcp, "_prompt_manager", None)
+    if prompt_manager is not None:
+        prompts = getattr(prompt_manager, "_prompts", None)
+        if isinstance(prompts, dict):
+            return set(prompts.keys())
+
+    prompts = getattr(server.mcp, "_prompts", None)
+    if isinstance(prompts, dict):
+        return set(prompts.keys())
+
+    for value in vars(server.mcp).values():
+        nested_prompts = getattr(value, "_prompts", None)
+        if isinstance(nested_prompts, dict):
+            return set(nested_prompts.keys())
+
+    raise AssertionError("Unable to locate FastMCP prompt registry")
+
+
 class TestToolModeRegistration:
     """Registered tool surface must match the configured ``tool_mode``.
 
@@ -1477,6 +1497,19 @@ class TestToolModeRegistration:
         names = _registered_tool_names(server)
         assert names == {"zim_query"}, (
             "simple mode must expose only zim_query; " f"got {sorted(names)}"
+        )
+
+    def test_simple_mode_still_registers_prompts(
+        self, test_config: OpenZimMcpConfig
+    ):
+        """Simple mode keeps the slash-command prompt surface."""
+        simple_config = test_config.model_copy(update={"tool_mode": "simple"})
+        server = OpenZimMcpServer(simple_config)
+
+        prompt_names = _registered_prompt_names(server)
+        assert prompt_names == {"research"}, (
+            "simple mode should advertise only the research MCP prompt; "
+            f"got {sorted(prompt_names)}"
         )
 
     def test_advanced_mode_registers_full_tool_surface(

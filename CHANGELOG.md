@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] — 2026-05-19
+
+Fork release for a single-archive personal deployment.
+
+### Changed
+
+- simple mode now keeps `zim_query` plus only the `/research` MCP prompt
+- single-archive simple mode treats entry-like values mistakenly passed as
+  `zim_file_path` as slot hallucinations and falls back to the only loaded archive
+- package metadata now identifies the maintainer as `sibyl`
+- `README.md` was rewritten for the fork's actual operating model: bare-metal,
+  systemd-managed, single-ZIM simple mode
+
 ## [2.0.0a16] — 2026-05-17 (alpha pre-release) — post-a15 beta-test sweep — 10 live-Wikipedia defects across seven passes
 
 The multi-pass live sweep of a15 against

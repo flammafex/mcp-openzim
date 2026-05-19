@@ -13,7 +13,7 @@ except PackageNotFoundError:
     # installation. Fall back to a sentinel so callers still get a string.
     __version__ = "0.0.0+unknown"
 
-__author__ = "Cameron Rye"
+__author__ = "sibyl"
 
 from .config import OpenZimMcpConfig
 from .exceptions import (

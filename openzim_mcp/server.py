@@ -27,7 +27,7 @@ from .security import (
 )
 from .simple_tools import SimpleToolsHandler
 from .tool_schemas import SynthesizeResponse
-from .tools import register_all_tools
+from .tools import register_all_tools, register_prompts
 from .zim_operations import ZimOperations
 
 logger = logging.getLogger(__name__)
@@ -408,6 +408,7 @@ class OpenZimMcpServer:
         if self.config.tool_mode == TOOL_MODE_SIMPLE:
             logger.info("Registering simple mode tools...")
             self._register_simple_tools()
+            register_prompts(self)
             return
 
         # Advanced mode - register all tools (existing behavior)

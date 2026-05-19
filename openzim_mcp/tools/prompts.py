@@ -176,7 +176,14 @@ def _explore_body(zim_file_path: str) -> List[Dict[str, Any]]:
 
 
 def register_prompts(server: "OpenZimMcpServer") -> None:
-    """Register MCP prompts on the FastMCP server."""
+    """Register MCP prompts on the FastMCP server.
+
+    This fork intentionally keeps only the ``research`` prompt. The
+    ``summarize`` and ``explore`` workflows ask the model to supply a
+    ``zim_file_path`` argument even though this deployment runs against a
+    single known archive; leaving them registered increases the chance that
+    a client hallucinates an entry path into the wrong parameter slot.
+    """
 
     @server.mcp.prompt("research")
     def research(topic: str) -> List[Dict[str, Any]]:
@@ -189,22 +196,3 @@ def register_prompts(server: "OpenZimMcpServer") -> None:
             Multi-step instruction message for the LLM
         """
         return _research_body(topic)
-
-    @server.mcp.prompt("summarize")
-    def summarize(zim_file_path: str, entry_path: str) -> List[Dict[str, Any]]:
-        """Summarize an article: TOC + summary + key links.
-
-        Args:
-            zim_file_path: ZIM file to read
-            entry_path: Article path, e.g. 'C/Photosynthesis'
-        """
-        return _summarize_body(zim_file_path, entry_path)
-
-    @server.mcp.prompt("explore")
-    def explore(zim_file_path: str) -> List[Dict[str, Any]]:
-        """Explore a ZIM file's contents at a high level.
-
-        Args:
-            zim_file_path: ZIM file to explore
-        """
-        return _explore_body(zim_file_path)

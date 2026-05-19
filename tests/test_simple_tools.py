@@ -1994,6 +1994,24 @@ class TestZimPathHallucinationHandling:
             explicit, compact=False
         )
 
+    def test_entry_like_slashed_value_in_zim_file_slot_triggers_auto_select(
+        self, handler, mock_zim_operations
+    ):
+        """A slashed value that looks like an entry path, not a ZIM path,
+        is treated as a parameter-slot hallucination in single-file mode.
+        """
+        mock_zim_operations.get_entry_summary.return_value = "summary text"
+        handler.handle_zim_query(
+            "summary of A/Marcellina_(gnostic)",
+            zim_file_path="A/Marcellina_(gnostic)",
+        )
+        mock_zim_operations.get_entry_summary.assert_called_once_with(
+            "/var/lib/zim/wikipedia_en_all_maxi.zim",
+            "A/Marcellina_(gnostic)",
+            200,
+            compact=False,
+        )
+
     def test_slashed_path_matching_full_path_is_used_verbatim(
         self, handler, mock_zim_operations
     ):
