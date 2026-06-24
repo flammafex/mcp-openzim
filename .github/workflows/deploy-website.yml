@@ -21,7 +21,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
@@ -77,7 +77,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout gh-pages branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         continue-on-error: true
         id: checkout-gh-pages
         with:
